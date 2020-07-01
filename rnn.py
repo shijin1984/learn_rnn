@@ -33,31 +33,31 @@ class RnnCell:
     return y, hh
 
 
-  def backward(self, x, h, grad_y, grad_h):
+  def backward(self, x, h, y, hh, grad_y, grad_hh):
     '''Calculates the gradients.
 
     Args:
       x, h: the input of the cell x(t) and h(t-1).
-      grad_y, grad_h: the gradients on the output y(t) and h(t).
+      y, hh: the output of the cell y(t) and h(t)
+      grad_y, grad_hh: the gradients on the output y(t) and h(t).
 
     Returns:
       Wh, Uh, bh, Wy, by, h: the gradients of parameters, except "h"
         is to propagate to the previous cell.
     '''
-    y, hh = self.forward(x, h)
     # For y = ReLU (W_y h(t) + b_y)
     grad_y = self._grad_relu(y, grad_y)
     grad_by = grad_y
-    grad_Wy, grad_y2h = self._grad_mv(self._Wy, hh, grad_y)
+    grad_Wy, grad_y2hh = self._grad_mv(self._Wy, hh, grad_y)
 
-    grad_h = grad_h + grad_y2h
+    grad_hh = grad_hh + grad_y2hh
     # For h = ReLU(W_h x + U_h h(t-1) + b_h)
-    grad_h = self._grad_relu(hh, grad_h)
-    grad_bh = grad_h
-    grad_Wh, _ = self._grad_mv(self._Wh, x, grad_h)
-    grad_Uh, grad_h_last = self._grad_mv(self._Uh, h, grad_h)
+    grad_hh = self._grad_relu(hh, grad_hh)
+    grad_bh = grad_hh
+    grad_Wh, _ = self._grad_mv(self._Wh, x, grad_hh)
+    grad_Uh, grad_h = self._grad_mv(self._Uh, h, grad_hh)
 
-    return grad_Wh, grad_Uh, grad_bh, grad_Wy, grad_by, grad_h_last
+    return grad_Wh, grad_Uh, grad_bh, grad_Wy, grad_by, grad_h
 
 
   def _relu(self, x):
@@ -132,6 +132,43 @@ class Rnn:
     return self._softmax(self._y[-1])
 
 
+  def back_propagate(self, input, label):
+    '''Calculates the weight updates based on input and label.
+
+    If the loss function is -\sum l_i log p_i, where l is one-hot label, the
+    loss gradient on the last activation is p_i - l_i.
+    '''
+    p = self.predict(input)
+    grad_y = p - label
+    grad_h = np.zeros(self._cell.dim_h())
+
+    # The gradients on parameters.
+    Wh = np.zeros(self._cell._Wh.shape)
+    Uh = np.zeros(self._cell._Uh.shape)
+    bh = np.zeros(self._cell._bh.shape)
+    Wy = np.zeros(self._cell._Wy.shape)
+    by = np.zeros(self._cell._by.shape)
+
+    for i in range(28 - 1, -1, -1):
+      _Wh, _Uh, _bh, _Wy, _by, _grad_h = (
+          self._cell.backward(x=self._x[i],
+                              h=self._h[i-1] if i > 0 else np.zeros(self._cell.dim_h()),
+                              y=self._y[i],
+                              hh=self._h[i],
+                              grad_y=grad_y,
+                              grad_hh=grad_h))
+      Wh += _Wh
+      Uh += _Uh
+      bh += _bh
+      Wy += _Wy
+      by += _by
+
+      grad_y = np.zeros(grad_y.shape)
+      grad_h = _grad_h
+
+    return Wh, Uh, bh, Wy, by
+
+
   def _softmax(self, x):
     exp = np.exp(x)
     s = np.sum(exp)
@@ -150,10 +187,7 @@ if __name__ == '__main__':
   x = np.random.rand(28, 28)
   print(rnn.predict(x))
 
-  c = rnn._cell
-  ret = c.backward(x=np.random.rand(28),
-                   h=np.random.rand(20),
-                   grad_y=np.random.rand(10),
-                   grad_h=np.random.rand(20))
+  ret = rnn.back_propagate(x, np.array([1.0 if i == 3 else 0.0 for i in range(10)]))
+  print(ret)
   for a in ret:
     print(a.shape)
