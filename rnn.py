@@ -4,32 +4,63 @@ import numpy as np
 
 class RnnCell:
 
-  def __init__(self, Wh, Uh, bh, Wy, by):
-    '''Constructs the cell. The dimensions are (given the dimension of h is H):
-       Wh: 28*H  Uh: H*H,  bh: H*1
-       Wy: 10*H,  by: 10*1
-
-    Args:
-      The matrix and bias as in the Elman network.
+  class Params:
+    '''The wrapper of RNN cell params.
     '''
-    dim_h = len(bh)
-    assert Wh.shape == (dim_h, 28)
-    self._Wh = np.array(Wh)
-    assert Uh.shape == (dim_h, dim_h)
-    self._Uh = np.array(Uh)
-    self._bh = np.array(bh)
-    assert Wy.shape == (10, dim_h)
-    self._Wy = np.array(Wy)
-    assert len(by) == 10
-    self._by = np.array(by)
+    def __init__(self, Wh, Uh, bh, Wy, by):
+      '''Constructs the cell. The dimensions are (given the dimension of h is H):
+         Wh: 28*H  Uh: H*H,  bh: H*1
+         Wy: 10*H,  by: 10*1
+
+      Args:
+        The matrix and bias as in the Elman network.
+      '''
+      _array = lambda x: x if isinstance(x, np.ndarray) else np.array(x)
+      dim_h = len(bh)
+      assert Wh.shape == (dim_h, 28)
+      self.Wh = _array(Wh)
+      assert Uh.shape == (dim_h, dim_h)
+      self.Uh = _array(Uh)
+      self.bh = _array(bh)
+      assert Wy.shape == (10, dim_h)
+      self.Wy = _array(Wy)
+      assert len(by) == 10
+      self.by = _array(by)
+
+    def zeros(self):
+      '''Creates another Params instance in the same size and all zeros.
+      '''
+      return self.__class__(
+          Wh=np.zeros(self.Wh.shape),
+          Uh=np.zeros(self.Uh.shape),
+          bh=np.zeros(self.bh.shape),
+          Wy=np.zeros(self.Wy.shape),
+          by=np.zeros(self.by.shape))
+
+    def __iadd__(self, other):
+      '''The += operator.
+      '''
+      self.Wh += other.Wh
+      self.Uh += other.Uh
+      self.bh += other.bh
+      self.Wy += other.Wy
+      self.by += other.by
+      return self
+
+    def __iter__(self):
+      return iter([self.Wh, self.Uh, self.bh, self.Wy, self.by])
+
+
+  def __init__(self, Wh, Uh, bh, Wy, by):
+    self._params = self.Params(Wh, Uh, bh, Wy, by)
 
 
   def forward(self, x, h):
     '''Calculates the y(t) and h(t) from x=x(t) and h=h(t-1).
     '''
-    z_h = np.matmul(self._Wh, x) + np.matmul(self._Uh, h) + self._bh
+    z_h = np.matmul(self._params.Wh, x) + np.matmul(self._params.Uh, h) + self._params.bh
     hh = self._relu(z_h)
-    y = self._relu(np.matmul(self._Wy, hh) + self._by)
+    y = self._relu(np.matmul(self._params.Wy, hh) + self._params.by)
     return y, hh
 
 
@@ -42,22 +73,23 @@ class RnnCell:
       grad_y, grad_hh: the gradients on the output y(t) and h(t).
 
     Returns:
-      Wh, Uh, bh, Wy, by, h: the gradients of parameters, except "h"
-        is to propagate to the previous cell.
+      grad_params, grad_h: the gradients of parameters of (Wh, Uh, bh, Wy, by)
+        and grad_h to propagate to the previous cell.
     '''
     # For y = ReLU (W_y h(t) + b_y)
     grad_y = self._grad_relu(y, grad_y)
     grad_by = grad_y
-    grad_Wy, grad_y2hh = self._grad_mv(self._Wy, hh, grad_y)
+    grad_Wy, grad_y2hh = self._grad_mv(self._params.Wy, hh, grad_y)
 
     grad_hh = grad_hh + grad_y2hh
     # For h = ReLU(W_h x + U_h h(t-1) + b_h)
     grad_hh = self._grad_relu(hh, grad_hh)
     grad_bh = grad_hh
-    grad_Wh, _ = self._grad_mv(self._Wh, x, grad_hh)
-    grad_Uh, grad_h = self._grad_mv(self._Uh, h, grad_hh)
+    grad_Wh, _ = self._grad_mv(self._params.Wh, x, grad_hh)
+    grad_Uh, grad_h = self._grad_mv(self._params.Uh, h, grad_hh)
 
-    return grad_Wh, grad_Uh, grad_bh, grad_Wy, grad_by, grad_h
+    grad_params = self.Params(grad_Wh, grad_Uh, grad_bh, grad_Wy, grad_by)
+    return grad_params, grad_h
 
 
   def _relu(self, x):
@@ -102,7 +134,7 @@ class RnnCell:
 
 
   def dim_h(self):
-    return len(self._bh)
+    return len(self._params.bh)
 
 
 class Rnn:
@@ -143,30 +175,22 @@ class Rnn:
     grad_h = np.zeros(self._cell.dim_h())
 
     # The gradients on parameters.
-    Wh = np.zeros(self._cell._Wh.shape)
-    Uh = np.zeros(self._cell._Uh.shape)
-    bh = np.zeros(self._cell._bh.shape)
-    Wy = np.zeros(self._cell._Wy.shape)
-    by = np.zeros(self._cell._by.shape)
+    grad_params = self._cell._params.zeros()
 
     for i in range(28 - 1, -1, -1):
-      _Wh, _Uh, _bh, _Wy, _by, _grad_h = (
+      _grad_params, _grad_h = (
           self._cell.backward(x=self._x[i],
                               h=self._h[i-1] if i > 0 else np.zeros(self._cell.dim_h()),
                               y=self._y[i],
                               hh=self._h[i],
                               grad_y=grad_y,
                               grad_hh=grad_h))
-      Wh += _Wh
-      Uh += _Uh
-      bh += _bh
-      Wy += _Wy
-      by += _by
 
+      grad_params += _grad_params
       grad_y = np.zeros(grad_y.shape)
       grad_h = _grad_h
 
-    return Wh, Uh, bh, Wy, by
+    return grad_params
 
 
   def _softmax(self, x):
@@ -188,6 +212,5 @@ if __name__ == '__main__':
   print(rnn.predict(x))
 
   ret = rnn.back_propagate(x, np.array([1.0 if i == 3 else 0.0 for i in range(10)]))
-  print(ret)
   for a in ret:
     print(a.shape)
