@@ -11,9 +11,6 @@ def build_model():
   model.add(LSTM(128, activation='relu'))
   model.add(Dropout(0.2))
 
-  model.add(Dense(32, activation='relu'))
-  model.add(Dropout(0.2))
-
   model.add(Dense(10, activation='softmax'))
 
   return model
