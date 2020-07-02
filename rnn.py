@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import math
 import numpy as np
 
 class RnnCell:
@@ -47,8 +48,23 @@ class RnnCell:
       self.by += other.by
       return self
 
+    def __imul__(self, rhs):
+      '''The *= operator.
+      '''
+      self.Wh *= rhs
+      self.Uh *= rhs
+      self.bh *= rhs
+      self.Wy *= rhs
+      self.by *= rhs
+      return self
+
     def __iter__(self):
       return iter([self.Wh, self.Uh, self.bh, self.Wy, self.by])
+
+    def inf_norm(self):
+      a = max(abs(np.max(x)) for x in self)
+      b = max(abs(np.min(x)) for x in self)
+      return max(a, b)
 
 
   def __init__(self, Wh, Uh, bh, Wy, by):
@@ -142,10 +158,10 @@ class Rnn:
     '''Initialize the network with random values.
     '''
     H = 20
-    self._cell = RnnCell(Wh=np.random.rand(H, 28) - 0.5,
-                         Uh=np.random.rand(H, H) - 0.5,
+    self._cell = RnnCell(Wh=np.random.rand(H, 28),
+                         Uh=np.random.rand(H, H),
                          bh=np.random.rand(H) - 0.5,
-                         Wy=np.random.rand(10, H) - 0.5,
+                         Wy=np.random.rand(10, H),
                          by=np.random.rand(10) - 0.5)
     self._y = []
     self._h = []
@@ -164,14 +180,14 @@ class Rnn:
     return self._softmax(self._y[-1])
 
 
-  def back_propagate(self, input, label):
+  def back_propagate(self, input, label, p=None):
     '''Calculates the weight updates based on input and label.
 
     If the loss function is -\sum l_i log p_i, where l is one-hot label, the
     loss gradient on the last activation is p_i - l_i.
     '''
-    p = self.predict(input)
-    grad_y = p - label
+    p = self.predict(input) if p is None else p
+    grad_y = np.array([p[i] - (1 if i == label else 0) for i in range(len(p))])
     grad_h = np.zeros(self._cell.dim_h())
 
     # The gradients on parameters.
@@ -194,6 +210,10 @@ class Rnn:
 
 
   def _softmax(self, x):
+    # To avoid overflow.
+    max_x = np.max(x)
+    if max_x > 30:
+      x =  x / max_x
     exp = np.exp(x)
     s = np.sum(exp)
     return exp / s
@@ -206,11 +226,59 @@ class Rnn:
     self._x = x
 
 
-if __name__ == '__main__':
-  rnn = Rnn()
-  x = np.random.rand(28, 28)
-  print(rnn.predict(x))
+  def run_epoch(self, xy, is_train=False, learning_rate=0.05):
+    samples = 0
+    errors = 0
+    loss = 0.0
+    grad = self._cell._params.zeros() if is_train else None
+    for x,y in xy:
+      samples += 1
+      p = self.predict(x)
+      loss += -math.log(p[y])
+      if np.argmax(p) != y:
+        errors += 1
 
-  ret = rnn.back_propagate(x, np.array([1.0 if i == 3 else 0.0 for i in range(10)]))
-  for a in ret:
-    print(a.shape)
+      if is_train:
+        grad += self.back_propagate(x, y, p)
+
+    print('In %s mode:' % ('TRAIN' if is_train else 'TEST'))
+    print('Error rate is %.1f%%, the loss is %.1f' % (100.0*errors/samples, loss))
+
+    if is_train:
+      scale = grad.inf_norm() / self._cell._params.inf_norm()
+      grad *= -learning_rate / scale
+      print('The inf-norm of param and grad are: ', self._cell._params.inf_norm(), grad.inf_norm())
+      self._cell._params += grad
+
+
+def load_data(path):
+  '''Load the MINIST dataset.
+
+  Format:
+    x_*: (n_samples, 28, 28), in row-first order.
+    y_*: (n_samples,) of integer.
+  '''
+  f = np.load(path)
+  x_train, y_train = f['x_train'], f['y_train']
+  x_test, y_test = f['x_test'], f['y_test']
+  x_train =  x_train / 255.0
+  x_test =  x_test / 255.0
+  f.close()
+  return (x_train, y_train), (x_test, y_test)
+
+
+
+if __name__ == '__main__':
+  np.seterr(all='raise')
+  rnn = Rnn()
+  # Downloaded from https://s3.amazonaws.com/img-datasets/mnist.npz
+  train, test = load_data('./mnist.npz')
+  n_train = len(train[1])
+  n_test = len(test[1])
+  print('Dataset loaded: %d training and %d test samples.' % ( n_train, n_test))
+
+  for epoch in range(100):
+    print('------- Running Epoch %d --------' % (epoch))
+    if epoch % 5 == 0:
+      rnn.run_epoch(zip(test[0], test[1]), False)
+    rnn.run_epoch(zip(train[0], train[1]), True, 0.05)
