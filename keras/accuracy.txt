@@ -1,5 +1,6 @@
 From console:
 
+
 Model: "sequential"
 _________________________________________________________________
 Layer (type)                 Output Shape              Param #
@@ -12,18 +13,33 @@ Total params: 500
 Trainable params: 500
 Non-trainable params: 0
 _________________________________________________________________
-Epoch 1/5
-1875/1875 [==============================] - 15s 8ms/step - loss: 1.8968 -
-accuracy: 0.3478 - val_loss: 1.5789 - val_accuracy: 0.4647
-Epoch 2/5
-1875/1875 [==============================] - 15s 8ms/step - loss: 1.5190 -
-accuracy: 0.4826 - val_loss: 1.4330 - val_accuracy: 0.5050
-Epoch 3/5
-1875/1875 [==============================] - 15s 8ms/step - loss: 1.4331 -
-accuracy: 0.5095 - val_loss: 1.3933 - val_accuracy: 0.5171
-Epoch 4/5
-1875/1875 [==============================] - 15s 8ms/step - loss: 1.3991 -
-accuracy: 0.5199 - val_loss: 1.3743 - val_accuracy: 0.5241
-Epoch 5/5
-1875/1875 [==============================] - 15s 8ms/step - loss: 1.3678 -
-accuracy: 0.5305 - val_loss: 1.3268 - val_accuracy: 0.5364
+Epoch 1/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 2.2365 -
+accuracy: 0.1620 - val_loss: 2.1376 - val_accuracy: 0.2512
+Epoch 2/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 2.0279 -
+accuracy: 0.2867 - val_loss: 1.9518 - val_accuracy: 0.2892
+Epoch 3/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.6413 -
+accuracy: 0.4088 - val_loss: 1.2927 - val_accuracy: 0.5302
+Epoch 4/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.2838 -
+accuracy: 0.5458 - val_loss: 1.1728 - val_accuracy: 0.5772
+Epoch 5/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.2253 -
+accuracy: 0.5693 - val_loss: 1.1155 - val_accuracy: 0.6048
+Epoch 6/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.1619 -
+accuracy: 0.5961 - val_loss: 1.1177 - val_accuracy: 0.6072
+Epoch 7/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.1718 -
+accuracy: 0.5936 - val_loss: 1.1662 - val_accuracy: 0.5805
+Epoch 8/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.1116 -
+accuracy: 0.6194 - val_loss: 1.0694 - val_accuracy: 0.6407
+Epoch 9/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.0747 -
+accuracy: 0.6348 - val_loss: 1.1499 - val_accuracy: 0.6110
+Epoch 10/10
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.0651 -
+accuracy: 0.6398 - val_loss: 1.5010 - val_accuracy: 0.4642

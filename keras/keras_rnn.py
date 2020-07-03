@@ -61,8 +61,8 @@ if __name__ == '__main__':
 
   model = build_model(x_train.shape)
   model.summary()
-  opt = tf.keras.optimizers.Adam(lr=1e-3, decay=1e-5)
+  opt = tf.keras.optimizers.SGD(learning_rate=1e-2)
   model.compile(loss='sparse_categorical_crossentropy', optimizer=opt,
                 metrics=['accuracy'])
 
-  model.fit(x_train, y_train, epochs=5, validation_data=(x_test, y_test))
+  model.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
