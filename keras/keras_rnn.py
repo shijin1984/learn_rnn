@@ -1,12 +1,14 @@
 import tensorflow as  tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, LSTM, Softmax
+from tensorflow.keras.layers import Dense, Dropout, LSTMCell, Softmax, RNN
 
-def build_model():
+def build_model(input_shape):
   model = Sequential()
-  model.add(LSTM(10, input_shape=(x_train.shape[1:]), activation='relu',
-                 return_sequences=False))
+  cell = LSTMCell(10)
+  model.add(RNN(cell, input_shape=input_shape[1:]))
   model.add(Softmax())
+
+  model.build()
 
   return model
 
@@ -18,7 +20,7 @@ if __name__ == '__main__':
   x_test = x_test / 255.0
 
 
-  model = build_model()
+  model = build_model(x_train.shape)
   model.summary()
   opt = tf.keras.optimizers.Adam(lr=1e-3, decay=1e-5)
   model.compile(loss='sparse_categorical_crossentropy', optimizer=opt,
