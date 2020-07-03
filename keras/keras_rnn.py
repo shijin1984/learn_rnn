@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Dense, Dropout, LSTM
 
 def build_model():
   model = Sequential()
-  model.add(LSTM(128, input_shape=(x_train.shape[1:]), activation='relu',
+  model.add(LSTM(10, input_shape=(x_train.shape[1:]), activation='relu',
                  return_sequences=False))
 
   model.add(Dense(10, activation='softmax'))
