@@ -1,10 +1,10 @@
 import tensorflow as  tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, LSTMCell, Softmax, RNN
+from tensorflow.keras.layers import Dense, Dropout, SimpleRNNCell, Softmax, RNN
 
 def build_model(input_shape):
   model = Sequential()
-  cell = LSTMCell(10)
+  cell = SimpleRNNCell(10, use_bias=True)
   model.add(RNN(cell, input_shape=input_shape[1:]))
   model.add(Softmax())
 
@@ -26,4 +26,4 @@ if __name__ == '__main__':
   model.compile(loss='sparse_categorical_crossentropy', optimizer=opt,
                 metrics=['accuracy'])
 
-  model.fit(x_train, y_train, epochs=3, validation_data=(x_test, y_test))
+  model.fit(x_train, y_train, epochs=5, validation_data=(x_test, y_test))
