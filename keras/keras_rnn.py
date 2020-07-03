@@ -5,11 +5,7 @@ from tensorflow.keras.layers import Dense, Dropout, LSTM
 def build_model():
   model = Sequential()
   model.add(LSTM(128, input_shape=(x_train.shape[1:]), activation='relu',
-                 return_sequences=True))
-  model.add(Dropout(0.2))
-
-  model.add(LSTM(128, activation='relu'))
-  model.add(Dropout(0.2))
+                 return_sequences=False))
 
   model.add(Dense(10, activation='softmax'))
 
@@ -24,6 +20,7 @@ if __name__ == '__main__':
 
 
   model = build_model()
+  model.summary()
   opt = tf.keras.optimizers.Adam(lr=1e-3, decay=1e-5)
   model.compile(loss='sparse_categorical_crossentropy', optimizer=opt,
                 metrics=['accuracy'])
