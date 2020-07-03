@@ -1,13 +1,12 @@
 import tensorflow as  tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, LSTM
+from tensorflow.keras.layers import Dense, Dropout, LSTM, Softmax
 
 def build_model():
   model = Sequential()
   model.add(LSTM(10, input_shape=(x_train.shape[1:]), activation='relu',
                  return_sequences=False))
-
-  model.add(Dense(10, activation='softmax'))
+  model.add(Softmax())
 
   return model
 
