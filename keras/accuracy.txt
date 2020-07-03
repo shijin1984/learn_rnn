@@ -4,17 +4,26 @@ Model: "sequential"
 _________________________________________________________________
 Layer (type)                 Output Shape              Param #
 =================================================================
-rnn (RNN)                    (None, 10)                390
+rnn (RNN)                    (None, 10)                500
 _________________________________________________________________
 softmax (Softmax)            (None, 10)                0
 =================================================================
-Total params: 390
-Trainable params: 390
+Total params: 500
+Trainable params: 500
 Non-trainable params: 0
 _________________________________________________________________
 Epoch 1/5
-1875/1875 [==============================] - 13s 7ms/step - loss: 1.8863 - accuracy: 0.3698 - val_loss: 1.7282 - val_accuracy: 0.4417
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.8968 -
+accuracy: 0.3478 - val_loss: 1.5789 - val_accuracy: 0.4647
 Epoch 2/5
-1875/1875 [==============================] - 13s 7ms/step - loss: 1.6921 - accuracy: 0.4570 - val_loss: 1.6613 - val_accuracy: 0.4788
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.5190 -
+accuracy: 0.4826 - val_loss: 1.4330 - val_accuracy: 0.5050
 Epoch 3/5
-1875/1875 [==============================] - 12s 7ms/step - loss: 1.6428 - accuracy: 0.4642 - val_loss: 1.6256 - val_accuracy: 0.4709
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.4331 -
+accuracy: 0.5095 - val_loss: 1.3933 - val_accuracy: 0.5171
+Epoch 4/5
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.3991 -
+accuracy: 0.5199 - val_loss: 1.3743 - val_accuracy: 0.5241
+Epoch 5/5
+1875/1875 [==============================] - 15s 8ms/step - loss: 1.3678 -
+accuracy: 0.5305 - val_loss: 1.3268 - val_accuracy: 0.5364
