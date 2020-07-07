@@ -150,25 +150,99 @@ class LSTMCell:
     # h(t-1) and C(t-1) are concat into `h', break it here.
     h, C = h[:10], h[10:]
 
-    zf = np.matmul(self._params.Wf, x)  + np.matmul(self._params.Uf, h) + self._params.bf
-    zi = np.matmul(self._params.Wi, x)  + np.matmul(self._params.Ui, h) + self._params.bi
-    zo = np.matmul(self._params.Wo, x)  + np.matmul(self._params.Uo, h) + self._params.bo
-    zc = np.matmul(self._params.Wc, x)  + np.matmul(self._params.Uc, h) + self._params.bc
+    self._zf = (
+        np.matmul(self._params.Wf, x)  + np.matmul(self._params.Uf, h) + self._params.bf)
+    self._zi = (
+        np.matmul(self._params.Wi, x)  + np.matmul(self._params.Ui, h) + self._params.bi)
+    self._zo = (
+        np.matmul(self._params.Wo, x)  + np.matmul(self._params.Uo, h) + self._params.bo)
+    self._zc = (
+        np.matmul(self._params.Wc, x)  + np.matmul(self._params.Uc, h) + self._params.bc)
 
     sigmoid = lambda z: 1.0 / (1 + np.exp(-z))
-    f, i, o = sigmoid(zf), sigmoid(zi), sigmoid(zo)
-    c = np.tanh(zc)
+    self._f = sigmoid(self._zf)
+    self._i = sigmoid(self._zi)
+    self._o = sigmoid(self._zo)
+    self._c = np.tanh(self._zc)
 
-    C = f*C + i*c
-    y = o * np.tanh(C)
+    self._C = self._f*C + self._i*self._c
+    y = self._o * np.tanh(self._C)
 
-    return y, np.concatenate((y, C))
+    return y, np.concatenate((y, self._C))
+
+  def backward(self, x, h, y, hh, grad_y, grad_hh):
+    '''Calculates the gradients.
+
+    Args:
+      x, h: the input of the cell x(t) and h(t-1).
+      y, hh: the output of the cell y(t) and h(t)
+      grad_y, grad_hh: the gradients on the output y(t) and h(t).
+
+    Returns:
+      grad_params, grad_h: the gradients of parameters of (Wh, Uh, bh, Wy, by)
+        and grad_h to propagate to the previous cell.
+    '''
+    # Call forward() to update the intermediate results.
+    y, hh = self.forward(x, h)
+    # Break the combined h of h, C
+    h, C = h[:10], h[10:]
+    grad_h, grad_C = grad_hh[:10], grad_hh[10:]
+    # h(t) = y(t) so to merge the gradients.
+    grad_h += grad_y
+
+    grad_o = grad_h * np.tanh(self._C)
+    grad_C = grad_h * self._o * self._d_tanh(self._C)
+
+    grad_f = grad_C * C
+    grad_C_prev = grad_C * self._f
+    grad_i = grad_C * self._c
+    grad_c = grad_C * self._i
+
+    grad_zf = grad_f * self._d_sigmoid(self._zf)
+    grad_zi = grad_i * self._d_sigmoid(self._zi)
+    grad_zo = grad_o * self._d_sigmoid(self._zo)
+    grad_zc = grad_c * self._d_tanh(self._zc)
+
+    grad_Wf, _, grad_Uf, grad_h_zf, grad_bf = self._grad_WUb(
+        self._params.Wf, x, self._params.Uf, h, grad_zf)
+    grad_Wi, _, grad_Ui, grad_h_zi, grad_bi = self._grad_WUb(
+        self._params.Wi, x, self._params.Ui, h, grad_zi)
+    grad_Wo, _, grad_Uo, grad_h_zo, grad_bo = self._grad_WUb(
+        self._params.Wo, x, self._params.Uo, h, grad_zo)
+    grad_Wc, _, grad_Uc, grad_h_zc, grad_bc = self._grad_WUb(
+        self._params.Wc, x, self._params.Uc, h, grad_zc)
+
+    grad_params = self.Params(
+        Wf=grad_Wf, Wi=grad_Wi, Wo=grad_Wo, Wc=grad_Wc,
+        Uf=grad_Uf, Ui=grad_Ui, Uo=grad_Uo, Uc=grad_Uc,
+        bf=grad_bf, bi=grad_bi, bo=grad_bo, bc=grad_bc)
+
+    grad_h_prev = (
+        grad_h_zf + grad_h_zi + grad_h_zo + grad_h_zc)
+    grad_prev = np.concatenate((grad_h_prev, grad_C_prev))
+
+    return grad_params, grad_prev
 
 
   def _relu(self, x):
     '''The ReLU activation function.
     '''
     return np.array([e if e > 0 else 0.0 for e in x ])
+
+
+  def _d_tanh(self, x):
+    '''Derivative of tanh(x): 1 - tanh(x)**2.
+    '''
+    tanh = np.tanh(x)
+    tanh = -tanh * tanh
+    return tanh + 1.0
+
+  def _d_sigmoid(self, x):
+    '''Derivative of s(x): s(x)*(1-s(x)).
+    '''
+    sigmoid = lambda z: 1.0 / (1 + np.exp(-z))
+    s = sigmoid(x)
+    return s * (-s + 1.0)
 
 
   def _grad_relu(self, x, grad):
@@ -205,8 +279,17 @@ class LSTMCell:
                        v.reshape(1, len(v)))
     return grad_M, grad_v
 
+  def _grad_WUb(self, W, x, U, h, grad):
+    '''z = W*x + U*h + b, and grad = grad_z.
+    Returns the gradients of W, x, U, h, b.
+    '''
+    grad_W, grad_x = self._grad_mv(W, x, grad)
+    grad_U, grad_h = self._grad_mv(U, h, grad)
+    return grad_W, grad_x, grad_U, grad_h, grad
+
 
 if __name__ == '__main__':
   cell = LSTMCell()
-  print(cell.forward(np.random.rand(28), np.random.rand(20)))
-
+  x = np.random.rand(28)
+  h = np.random.rand(20)
+  print(cell.backward(x, h, None, None, np.random.rand(10), np.random.rand(20)))
