@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from elman import RnnCell
+from lstm import LSTMCell
 import math
 import numpy as np
 
@@ -8,19 +9,9 @@ class Rnn:
   def __init__(self):
     '''Initialize the network with random values.
     '''
-    H = 20
+    self._H = 20
+    self._cell = LSTMCell()
 
-    def _glorot(row, col):
-      limit = math.sqrt(6.0 / (row * col))
-      m = np.random.rand(row, col)
-      # Scale from (0,1) to (-limit, limit)
-      return (m * (2*limit)) - limit
-
-    self._cell = RnnCell(Wh=_glorot(H, 28),
-                         Uh=_glorot(H, H),
-                         bh=np.zeros(H),
-                         Wy=_glorot(10, H),
-                         by=np.zeros(10))
     self._y = []
     self._h = []
     self._x = []
@@ -32,7 +23,7 @@ class Rnn:
     self._reset(input)
     for i in range(28):
       x = self._x[i]
-      h = self._h[i-1] if i > 0 else np.zeros(self._cell.dim_h())
+      h = self._h[i-1] if i > 0 else np.zeros(self._H)
       self._y[i], self._h[i] = self._cell.forward(x, h)
 
     return self._softmax(self._y[-1])
@@ -46,7 +37,7 @@ class Rnn:
     '''
     p = self.predict(input) if p is None else p
     grad_y = np.array([p[i] - (1 if i == label else 0) for i in range(len(p))])
-    grad_h = np.zeros(self._cell.dim_h())
+    grad_h = np.zeros(self._H)
 
     # The gradients on parameters.
     grad_params = self._cell._params.zeros()
@@ -54,7 +45,7 @@ class Rnn:
     for i in range(28 - 1, -1, -1):
       _grad_params, _grad_h = (
           self._cell.backward(x=self._x[i],
-                              h=self._h[i-1] if i > 0 else np.zeros(self._cell.dim_h()),
+                              h=self._h[i-1] if i > 0 else np.zeros(self._H),
                               y=self._y[i],
                               hh=self._h[i],
                               grad_y=grad_y,
@@ -106,7 +97,6 @@ class Rnn:
       # scale = grad.inf_norm() / self._cell._params.inf_norm()
       scale = 1.0
       grad *= -learning_rate / scale
-      print('The inf-norm of param and grad are: ', self._cell._params.inf_norm(), grad.inf_norm())
       self._cell._params += grad
 
 
@@ -128,7 +118,6 @@ def load_data(path):
 
 
 if __name__ == '__main__':
-  np.seterr(all='raise')
   rnn = Rnn()
   # Downloaded from https://s3.amazonaws.com/img-datasets/mnist.npz
   train, test = load_data('./mnist.npz')
@@ -136,9 +125,10 @@ if __name__ == '__main__':
   n_test = len(test[1])
   print('Dataset loaded: %d training and %d test samples.' % ( n_train, n_test))
 
-  # train = (train[0][:5000], train[1][:5000])
+  batch = 300
   for epoch in range(100):
     print('------- Running Epoch %d --------' % (epoch))
     if epoch % 5 == 0:
       rnn.run_epoch(zip(test[0], test[1]), False)
-    rnn.run_epoch(zip(train[0], train[1]), True, 5e-4)
+    for i in range(0, n_train, batch):
+      rnn.run_epoch(zip(train[0][i:i+batch], train[1][i:i+batch]), True, 1e-2)
